@@ -1,8 +1,8 @@
 "use strict";
 
 const EventEmitter = require("events");
-const puppeteer = require("puppeteer");
 const moduleRaid = require("@pedroslopez/moduleraid/moduleraid");
+const chromium = require("chrome-aws-lambda");
 const jsQR = require("jsqr");
 
 const Util = require("./util/Util");
@@ -72,11 +72,18 @@ class Client extends EventEmitter {
     /**
      * Sets up events and requirements, kicks off authentication request
      */
-    async initialize(connectOptions) {
-        const browser = await puppeteer.connect(connectOptions);
+    async initialize() {
+        const browser = await chromium.puppeteer.launch({
+            args: chromium.args,
+            defaultViewport: chromium.defaultViewport,
+            executablePath: await chromium.executablePath,
+            headless: chromium.headless,
+            ignoreHTTPSErrors: true,
+        });
+
         const page = await browser.newPage();
 
-        page.setUserAgent(this.options.userAgent);
+        await page.setUserAgent(this.options.userAgent);
 
         this.pupBrowser = browser;
         this.pupPage = page;
@@ -120,7 +127,7 @@ class Client extends EventEmitter {
                     if (this.options.restartOnAuthFail) {
                         // session restore failed so try again but without session to force new authentication
                         this.options.session = null;
-                        this.initialize(connectOptions);
+                        this.initialize();
                     }
                     return;
                 }
